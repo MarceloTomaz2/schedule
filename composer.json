@@ -19,8 +19,7 @@
     },
     "authors": [
         {
-            "name": "Marcelo",
-            "email": "developer@example.com"
+            "name": "Marcelo"
         }
     ],
     "minimum-stability": "stable",
