@@ -4,3 +4,6 @@
 /.env
 /composer.lock
 *.log
+/logs
+/tmp
+.phpunit.result.cache
