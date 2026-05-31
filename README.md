@@ -64,37 +64,55 @@ class LimparLogsTask extends AbstractTask
 }
 ```
 
-### 2. Ponto de Entrada (Ex: `cron.php`)
+### 2. Integração com Mad Builder / Adianti Framework (`cmd.php`)
 
-No seu projeto, crie o script que será chamado pelo crontab do servidor operacional a cada minuto. Utilize a `TaskFactory` para registrar e orquestrar suas tasks.
-
-Por padrão, a lib criará as pastas `tmp/` (para arquivos de lock) e `logs/` (para o histórico) na mesma raiz de onde o script estiver rodando. Caso você prefira usar diretórios personalizados (ex: `/var/log`), você pode configurar o `TaskFactory` antes de invocá-lo:
+Dentro de um projeto gerado pelo **Mad Builder** utilizando o **Adianti Framework**, a recomendação é utilizar o script `cmd.php` (na raiz do projeto) como ponto de entrada do *Scheduler*. Como o `cmd.php` pode carregar a inicialização do Adianti (`init.php`), isso garante que as suas Tasks tenham acesso a banco de dados e models nativos.
 
 ```php
 <?php
-
-require __DIR__ . '/vendor/autoload.php';
+// Exemplo de cmd.php na raiz do seu projeto Adianti
+require_once 'init.php';
+require_once 'vendor/autoload.php';
 
 use Schedule\TaskFactory;
-use App\Jobs\LimparLogsTask;
+use App\Service\Task\SelectNewsTask;
+use App\Service\Chatwoot\SearchTask;
 
-// (Opcional) Configura caminhos customizados para os diretórios tmp e logs
-TaskFactory::setConfig('/caminho/absoluto/tmp', '/caminho/absoluto/logs');
+// (Opcional) Configura caminhos customizados para os diretórios tmp e logs na raiz do projeto Adianti
+// TaskFactory::setConfig(__DIR__ . '/tmp', __DIR__ . '/logs');
 
 // Passe as instâncias das tarefas (ou o nome da classe em string)
 TaskFactory::run([
-    new LimparLogsTask(),
-    // OutraTask::class
+    new SelectNewsTask(),
+    new SearchTask(),
 ]);
 ```
 
-### 3. Configurando no Servidor (Linux)
+### 3. Configurando a Execução Automática (Sistema Operacional)
 
-Adicione o seu script principal no Crontab do sistema operacional para rodar a cada minuto. O Scheduler cuidará de decidir qual tarefa será invocada com base na expressão definida:
+O *Scheduler* funciona verificando minuto a minuto quais tarefas devem rodar. Por isso, você deve configurar o seu sistema operacional para chamar o `cmd.php` a cada minuto. O pacote fará toda a orquestração internamente (evitando duplicidade e checando expressões Cron).
+
+#### 🐧 Linux (Cron)
+
+Adicione o seu script no Crontab (`crontab -e`) para rodar a cada minuto:
 
 ```bash
-* * * * * php /caminho/do/seu/projeto/cron.php >> /dev/null 2>&1
+* * * * * php /caminho/do/seu/projeto/cmd.php >> /dev/null 2>&1
 ```
+
+#### 🪟 Windows (Agendador de Tarefas / Task Scheduler)
+
+No Windows, configure uma tarefa que se repita continuamente:
+
+1. Abra o aplicativo **Agendador de Tarefas** (Task Scheduler) e selecione **Criar Tarefa...** (Create Task).
+2. Na aba **Geral**, defina um nome (ex: `Adianti Scheduler`).
+3. Na aba **Disparadores** (Triggers), clique em **Novo**. Configure como **Diariamente**, marque a opção **Repetir a tarefa a cada:** `1 minuto`, com duração de **Indefinidamente**.
+4. Na aba **Ações** (Actions), clique em **Novo**:
+   - **Ação:** Iniciar um programa.
+   - **Programa/script:** Digite `php` (ou o caminho completo para o `php.exe`, ex: `C:\php\php.exe`).
+   - **Adicionar argumentos:** `-f "C:\caminho\do\seu\projeto\cmd.php"`
+   - **Iniciar em:** `C:\caminho\do\seu\projeto\`
+5. Clique em **OK** para salvar e iniciar o seu agendador.
 
 ## Testes
 
